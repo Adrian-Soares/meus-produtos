@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cadastrar Produto 🐱✨</title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&family=Pacifico&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- HEADER -->
+  <header>
+    <div class="header-inner">
+      <div class="logo-container">
+        <span class="emoji">🐱</span>
+        <h1 id="titulo-form">Cadastrar Produto</h1>
+        <span class="emoji">✨</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- FORMULÁRIO CENTRALIZADO -->
+  <main>
+    <form id="form-produto" class="card-form">
+      <label>
+        Nome do Produto<br />
+        <input type="text" id="nome" placeholder="Ex: Batom Rosa" required />
+      </label>
+
+      <label>
+        Quantidade<br />
+        <input type="number" id="quantidade" min="0" placeholder="0" required />
+      </label>
+
+      <label>
+        Data de Validade<br />
+        <input type="date" id="dataValidade" required />
+      </label>
+
+      <div class="botoes-form">
+        <button type="submit" class="btn-primary">Salvar</button>
+        <button type="button" id="btn-cancelar" class="btn-secondary">Cancelar</button>
+      </div>
+    </form>
+  </main>
+
+  <!-- RODAPÉ -->
+  <footer>
+    <p>🐾 Gestão Pink 🐾</p>
+  </footer>
+
+  <!-- SCRIPT: CRUD E GLITTER -->
+  <script>
+    const STORAGE_KEY = "produtos-loja";
+
+    function carregarProdutos() {
+      const dados = localStorage.getItem(STORAGE_KEY);
+      return dados ? JSON.parse(dados) : [];
+    }
+
+    function salvarProdutos(lista) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
+    }
+
+    function gerarId() {
+      return Date.now().toString();
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const editarId = urlParams.get("id");
+    const form = document.getElementById("form-produto");
+    const titulo = document.getElementById("titulo-form");
+
+    if (editarId) {
+      titulo.textContent = "Editar Produto";
+      const lista = carregarProdutos();
+      const produto = lista.find(item => item.id === editarId);
+      if (produto) {
+        document.getElementById("nome").value = produto.nome;
+        document.getElementById("quantidade").value = produto.quantidade;
+        document.getElementById("dataValidade").value = produto.dataValidade;
+      }
+    }
+
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      const nome = document.getElementById("nome").value.trim();
+      const quantidade = parseInt(document.getElementById("quantidade").value, 10);
+      const dataValidade = document.getElementById("dataValidade").value;
+
+      let lista = carregarProdutos();
+
+      if (editarId) {
+        lista = lista.map(item => {
+          if (item.id === editarId) {
+            return { ...item, nome, quantidade, dataValidade, notificado: false };
+          }
+          return item;
+        });
+      } else {
+        const novoProduto = {
+          id: gerarId(),
+          nome,
+          quantidade,
+          dataValidade,
+          notificado: false
+        };
+        lista.push(novoProduto);
+      }
+
+      salvarProdutos(lista);
+      window.location.href = "index.html";
+    });
+
+    document.getElementById("btn-cancelar").addEventListener("click", e => {
+      spawnGlitter(e);
+      window.location.href = "index.html";
+    });
+
+    // GLITTER DOURADO AO CLICAR EM BOTÕES
+    function spawnGlitter(event) {
+      const rect = event.target.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      for (let i = 0; i < 20; i++) {
+        const glitter = document.createElement("div");
+        glitter.classList.add("gold-glitter");
+        glitter.style.left = `${centerX}px`;
+        glitter.style.top = `${centerY}px`;
+
+        const angle = Math.random() * 2 * Math.PI;
+        const distance = Math.random() * 80 + 20;
+        const dx = Math.cos(angle) * distance;
+        const dy = Math.sin(angle) * distance;
+
+        glitter.style.setProperty("--dx", `${dx.toFixed(1)}px`);
+        glitter.style.setProperty("--dy", `${dy.toFixed(1)}px`);
+
+        document.body.appendChild(glitter);
+        glitter.addEventListener("animationend", () => {
+          glitter.remove();
+        });
+      }
+    }
+
+    document.body.addEventListener("click", e => {
+      if (e.target.tagName.toLowerCase() === "button") {
+        spawnGlitter(e);
+      }
+    });
+
+    // ANIMAÇÃO “PULSE” EM BOTÕES NO HOVER (DESKTOP)
+    document.querySelectorAll("button").forEach(btn => {
+      btn.addEventListener("mouseenter", () => {
+        btn.classList.add("btn-hover");
+      });
+      btn.addEventListener("mouseleave", () => {
+        btn.classList.remove("btn-hover");
+      });
+    });
+  </script>
+</body>
+</html>
