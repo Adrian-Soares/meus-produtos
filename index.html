@@ -43,6 +43,13 @@
       </div>
     </section>
 
+    <!-- FILTROS -->
+    <section id="filtros">
+      <button class="btn-filter active" data-filtrar="All">Todos</button>
+      <button class="btn-filter" data-filtrar="Vencido">Vencidos</button>
+      <button class="btn-filter" data-filtrar="PertoDeVencer">Perto de vencer</button>
+    </section>
+
     <!-- TABELA (DESKTOP) -->
     <div class="table-wrapper">
       <table id="tabela-produtos">
@@ -70,305 +77,151 @@
     <p>Feito com 💖 para você</p>
   </footer>
 
-  <!-- SCRIPT: CRUD, INTRO, GLITTER, CLICK PAW, CARDS MOBILE, ETC. -->
+  <!-- SCRIPT: CRUD, FILTROS, INTRO, GLITTER, CLICK PAW, CARDS MOBILE, ETC. -->
   <script>
-    // 1) INTRO OVERLAY
-    document.addEventListener("DOMContentLoaded", () => {
-      const overlay = document.getElementById("intro-overlay");
-      const paw = document.querySelector(".intro-cat");
-      if (paw) {
-        paw.classList.add("cat-bounce");
-        setTimeout(() => {
-          overlay.classList.add("fade-out");
-        }, 2000);
-        overlay.addEventListener("animationend", e => {
-          if (e.animationName === "fadeOutOverlay") {
-            overlay.style.display = "none";
-            iniciarApp();
-          }
+    // Variável de controle de filtro
+    let filtroAtual = "All";  // "All", "Vencido" ou "PertoDeVencer"
+
+    // 1) FUNÇÕES DE FILTRO
+    function configurarFiltros() {
+      document.querySelectorAll("#filtros .btn-filter").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll("#filtros .btn-filter").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          filtroAtual = btn.dataset.filtrar;
+          montarTabela();
         });
-      } else {
-        iniciarApp();
-      }
-
-      // 7) CLICK PAW EM QUALQUER LUGAR (exceto botões)
-      document.body.addEventListener("click", e => {
-        spawnClickPaw(e);
       });
-    });
-
-    // 2) INICIA A APLICAÇÃO
-    function iniciarApp() {
-      montarTabela();
-      gerarGlitterFundo();
-      if ("Notification" in window && Notification.permission === "default") {
-        Notification.requestPermission();
-      }
-      setInterval(montarTabela, 30 * 60 * 1000);
-      configurarBotaoNovo();
-      ativarGlitterNosBotoes();
-      adicionarAnimacaoBotoes();
     }
 
-    // 3) GLITTER FIXO NO FUNDO
-    function gerarGlitterFundo() {
-      const quantidade = 40;
-      for (let i = 0; i < quantidade; i++) {
-        const sparkle = document.createElement("div");
-        sparkle.classList.add("gold-glitter");
-        sparkle.style.left = Math.random() * 100 + "vw";
-        sparkle.style.top = Math.random() * 100 + "vh";
-        sparkle.style.animationDelay = Math.random() * 3 + "s";
-        document.body.appendChild(sparkle);
-      }
-    }
-
-    // 4) CRUD E LOCALSTORAGE
+    // 2) CRUD & LOCALSTORAGE
     const STORAGE_KEY = "produtos-loja";
-
     function carregarProdutos() {
       const dados = localStorage.getItem(STORAGE_KEY);
       return dados ? JSON.parse(dados) : [];
     }
-
     function salvarProdutos(lista) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
     }
-
-    function gerarId() {
-      return Date.now().toString();
+    function formatarData(d) {
+      const [y, m, day] = d.split("-"); return `${day}/${m}/${y}`;
     }
-
-    function formatarData(dataISO) {
-      const [ano, mes, dia] = dataISO.split("-");
-      return `${dia}/${mes}/${ano}`;
+    function diasParaVencimento(d) {
+      const hoje = new Date(), ven = new Date(d + "T00:00:00");
+      return Math.floor((ven - hoje)/(1000*60*60*24));
     }
-
-    function diasParaVencimento(dataISO) {
-      const hoje = new Date();
-      const dataVence = new Date(dataISO + "T00:00:00");
-      const diffMs = dataVence - hoje;
-      return Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    }
-
-    function calcularStatus(dataISO) {
-      const dias = diasParaVencimento(dataISO);
+    function calcularStatus(d) {
+      const dias = diasParaVencimento(d);
       if (dias < 0) return "Vencido";
       if (dias <= 7) return "PertoDeVencer";
       return "OK";
     }
-
-    function notificar(titulo, corpo) {
+    function notificar(t, c) {
       if (!("Notification" in window)) return;
-      if (Notification.permission === "granted") {
-        new Notification(titulo, { body: corpo });
-      } else if (Notification.permission === "default") {
-        Notification.requestPermission().then(perm => {
-          if (perm === "granted") {
-            new Notification(titulo, { body: corpo });
-          }
-        });
-      }
+      if (Notification.permission === "granted") new Notification(t,{body:c});
+      else if (Notification.permission === "default") Notification.requestPermission().then(p=>{ if(p==='granted') new Notification(t,{body:c}); });
     }
+    function marcarComoNotificado(lista,id){ return lista.map(i=>i.id===id?{...i,notificado:true}:i); }
 
-    function marcarComoNotificado(lista, id) {
-      return lista.map(item => {
-        if (item.id === id) {
-          return { ...item, notificado: true };
-        }
-        return item;
-      });
-    }
-
-    // 5) MONTA TABELA (DESKTOP) E CARDS (MOBILE)
+    // 3) MONTAR TABELA E CARDS
     function montarTabela() {
-      let lista = carregarProdutos();
-      const tbody = document.querySelector("#tabela-produtos tbody");
-      tbody.innerHTML = "";
+      const todos = carregarProdutos();
+      // Atualiza contadores com base em todos os produtos
+      const contVencendo = todos.filter(p=>calcularStatus(p.dataValidade)==="PertoDeVencer").length;
+      const contVencidos  = todos.filter(p=>calcularStatus(p.dataValidade)==="Vencido").length;
+      document.getElementById("avisoVencendo").textContent = contVencendo;
+      document.getElementById("avisoVencido").textContent  = contVencidos;
 
-      const cardList = document.querySelector(".mobile-card-list");
-      if (cardList) cardList.innerHTML = "";
+      // Filtra para exibição
+      const lista = filtroAtual==="All"?todos:todos.filter(p=>calcularStatus(p.dataValidade)===filtroAtual);
 
-      let contVencendo = 0;
-      let contVencidos = 0;
+      const tbody = document.querySelector("#tabela-produtos tbody"); tbody.innerHTML = "";
+      const cards = document.querySelector(".mobile-card-list"); if(cards) cards.innerHTML = "";
 
-      lista.forEach(p => {
+      let atualizados = [...todos];
+      lista.forEach(p=>{
         const status = calcularStatus(p.dataValidade);
-        if (status === "PertoDeVencer") contVencendo++;
-        if (status === "Vencido") contVencidos++;
-
-        // Linha tabela (desktop)
-        const tr = document.createElement("tr");
-        tr.classList.add(status);
-        tr.innerHTML = `
+        // Tabela
+        const tr=document.createElement("tr"); tr.classList.add(status);
+        tr.innerHTML=`
           <td>${p.nome}</td>
           <td>${p.quantidade}</td>
           <td>${formatarData(p.dataValidade)}</td>
-          <td>${status === "PertoDeVencer" ? "Perto de vencer" : status}</td>
-          <td>
-            <button class="btn-editar" data-id="${p.id}">✏️</button>
-            <button class="btn-excluir" data-id="${p.id}">🗑️</button>
-          </td>
-        `;
+          <td>${status==="PertoDeVencer"?`Vence em ${diasParaVencimento(p.dataValidade)} dia${diasParaVencimento(p.dataValidade)===1?'':'s'}`:(status==="Vencido"?"Expirado":"Válido")}</td>
+          <td><button class="btn-editar" data-id="${p.id}">✏️</button><button class="btn-excluir" data-id="${p.id}">🗑️</button></td>`;
         tbody.appendChild(tr);
-
-        // Card produto (mobile)
-        if (cardList) {
-          const card = document.createElement("div");
-          card.classList.add("mobile-card");
-          card.innerHTML = `
-            <div class="card-row">
-              <span class="label">Nome:</span> <span>${p.nome}</span>
-            </div>
-            <div class="card-row">
-              <span class="label">Qtd.:</span> <span>${p.quantidade}</span>
-            </div>
-            <div class="card-row">
-              <span class="label">Validade:</span> <span>${formatarData(p.dataValidade)}</span>
-            </div>
-            <div class="card-row">
-              <span class="label">Status:</span> <span>${status === "PertoDeVencer" ? "Perto de vencer" : status}</span>
-            </div>
-            <div class="card-actions">
-              <button class="edit" data-id="${p.id}">✏️</button>
-              <button class="delete" data-id="${p.id}">🗑️</button>
-            </div>
-          `;
-          cardList.appendChild(card);
+        // Cards mobile
+        if(cards){
+          const card=document.createElement("div"); card.classList.add("mobile-card",status);
+          card.innerHTML=`
+            <div class="card-row"><span class="label">Nome:</span> <span>${p.nome}</span></div>
+            <div class="card-row"><span class="label">Qtd.:</span> <span>${p.quantidade}</span></div>
+            <div class="card-row"><span class="label">Validade:</span> <span>${formatarData(p.dataValidade)}</span></div>
+            <div class="card-row"><span class="label">Status:</span> <span>${status==="PertoDeVencer"?`Vence em ${diasParaVencimento(p.dataValidade)} dia${diasParaVencimento(p.dataValidade)===1?'':'s'}`:(status==="Vencido"?"Expirado":"Válido")}</span></div>
+            <div class="card-actions"><button class="edit" data-id="${p.id}">✏️</button><button class="delete" data-id="${p.id}">🗑️</button></div>`;
+          cards.appendChild(card);
         }
-
-        // Notificação se necessário
-        if (status === "PertoDeVencer" && !p.notificado) {
-          notificar(
-            "🐱 Produto perto do vencimento",
-            `O produto "${p.nome}" vence em ${formatarData(p.dataValidade)}.`
-          );
-          lista = marcarComoNotificado(lista, p.id);
-        }
+        // Notificação
+        if(status==="PertoDeVencer" && !p.notificado){ notificar("🐱 Produto perto do vencimento",`O produto \"${p.nome}\" vence em ${formatarData(p.dataValidade)}.`); atualizados=marcarComoNotificado(atualizados,p.id); }
       });
+      salvarProdutos(atualizados);
+      // Eventos
+      document.querySelectorAll(".btn-excluir").forEach(b=>b.addEventListener("click",e=>{if(confirm("Deseja realmente excluir este produto?")){salvarProdutos(carregarProdutos().filter(i=>i.id!==b.dataset.id)); montarTabela();}}));
+      document.querySelectorAll(".btn-editar").forEach(b=>b.addEventListener("click",()=>location.href=`novo.html?id=${b.dataset.id}`));
+      if(cards){cards.querySelectorAll(".delete").forEach(b=>b.addEventListener("click",e=>{if(confirm("Deseja realmente excluir este produto?")){salvarProdutos(carregarProdutos().filter(i=>i.id!==b.dataset.id)); montarTabela();}}));cards.querySelectorAll(".edit").forEach(b=>b.addEventListener("click",()=>location.href=`novo.html?id=${b.dataset.id}`));}
+    }
 
-      document.getElementById("avisoVencendo").textContent = contVencendo;
-      document.getElementById("avisoVencido").textContent = contVencidos;
+    // 4) BOTÃO NOVO
+    function configurarBotaoNovo(){document.getElementById("btn-novo").addEventListener("click",()=>location.href="novo.html");}
 
-      salvarProdutos(lista);
+    // 5) INTRO OVERLAY
+   function controlarIntro() {
+  const overlay = document.getElementById("intro-overlay");
+  const paw     = overlay.querySelector(".intro-cat");
 
-      // Configura ações nos cards mobile
-      if (cardList) {
-        cardList.querySelectorAll(".edit").forEach(btn => {
-          btn.addEventListener("click", e => {
-            spawnGlitter(e);
-            const id = btn.dataset.id;
-            window.location.href = `novo.html?id=${id}`;
-          });
-        });
-        cardList.querySelectorAll(".delete").forEach(btn => {
-          btn.addEventListener("click", e => {
-            spawnGlitter(e);
-            const id = btn.dataset.id;
-            if (confirm("Deseja realmente excluir este produto?")) {
-              const novaLista = carregarProdutos().filter(item => item.id !== id);
-              salvarProdutos(novaLista);
-              montarTabela();
-            }
-          });
-        });
+  if (paw) {
+    // 1) Faz o gatinho pular
+    paw.classList.add("cat-bounce");
+
+    // 2) Depois de 2s (tempo do bounce), dá fade-out no overlay
+    setTimeout(() => {
+      overlay.classList.add("fade-out");
+    }, 2000);
+
+    // 3) Quando o fade terminar, esconde e inicia o app
+    overlay.addEventListener("animationend", e => {
+      if (e.animationName === "fadeOutOverlay") {
+        overlay.style.display = "none";
+        iniciarApp();
       }
+    });
+  } else {
+    // Se não achar o overlay, inicia direto
+    iniciarApp();
+  }
+}
 
-      // Configura ações na tabela desktop
-      document.querySelectorAll(".btn-excluir").forEach(btn => {
-        btn.addEventListener("click", e => {
-          spawnGlitter(e);
-          const id = btn.dataset.id;
-          if (confirm("Deseja realmente excluir este produto?")) {
-            const novaLista = carregarProdutos().filter(item => item.id !== id);
-            salvarProdutos(novaLista);
-            montarTabela();
-          }
-        });
-      });
-      document.querySelectorAll(".btn-editar").forEach(btn => {
-        btn.addEventListener("click", e => {
-          spawnGlitter(e);
-          const id = btn.dataset.id;
-          window.location.href = `novo.html?id=${id}`;
-        });
-      });
-    }
 
-    // 6) BOTÃO "+ NOVO PRODUTO"
-    function configurarBotaoNovo() {
-      const btnNovo = document.getElementById("btn-novo");
-      if (btnNovo) {
-        btnNovo.addEventListener("click", e => {
-          spawnGlitter(e);
-          window.location.href = "novo.html";
-        });
-      }
-    }
+    // 6) INICIA APLICATIVO
+    function iniciarApp(){configurarFiltros(); montarTabela(); gerarGlitterFundo(); if("Notification"in window&&Notification.permission==="default")Notification.requestPermission(); setInterval(montarTabela,30*60*1000); configurarBotaoNovo(); ativarGlitterNosBotoes(); adicionarAnimacaoBotoes();}
 
-    // 7) GLITTER DOURADO EM CLIQUE DE BOTÕES
-    function spawnGlitter(event) {
-      const rect = event.target.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
+    // 7) GLITTER FUNDO
+    function gerarGlitterFundo(){for(let i=0;i<40;i++){const s=document.createElement("div");s.classList.add("gold-glitter");s.style.left=`${Math.random()*100}vw`;s.style.top=`${Math.random()*100}vh`;s.style.animationDelay=`${Math.random()*3}s`;document.body.appendChild(s);}}
 
-      for (let i = 0; i < 20; i++) {
-        const glitter = document.createElement("div");
-        glitter.classList.add("gold-glitter");
-        glitter.style.left = `${centerX}px`;
-        glitter.style.top = `${centerY}px`;
+    // 8) CLique PATINHA
+    function spawnClickPaw(e){if(e.target.tagName.toLowerCase()==="button")return;const x=e.clientX,y=e.clientY;const sp=document.createElement("span");sp.classList.add("click-paw");sp.textContent="🐾";sp.style.left=`${x-12}px`;sp.style.top=`${y-12}px`;document.body.appendChild(sp);sp.addEventListener("animationend",()=>sp.remove());}
+    document.body.addEventListener("click",spawnClickPaw);
 
-        const angle = Math.random() * 2 * Math.PI;
-        const distance = Math.random() * 80 + 20;
-        const dx = Math.cos(angle) * distance;
-        const dy = Math.sin(angle) * distance;
+    // 9) GLITTER CLIQUE BOTÃO
+    function spawnGlitter(e){const r=e.target.getBoundingClientRect();const cx=r.left+r.width/2,cy=r.top+r.height/2;for(let i=0;i<20;i++){const g=document.createElement("div");g.classList.add("gold-glitter");g.style.left=`${cx}px`;g.style.top=`${cy}px`;const a=Math.random()*2*Math.PI,d=Math.random()*80+20;g.style.setProperty("--dx",`${Math.cos(a)*d}px`);g.style.setProperty("--dy",`${Math.sin(a)*d}px`);document.body.appendChild(g);g.addEventListener("animationend",()=>g.remove());}}
+    function ativarGlitterNosBotoes(){document.body.addEventListener("click",e=>{if(e.target.tagName.toLowerCase()==="button")spawnGlitter(e);});}
 
-        glitter.style.setProperty("--dx", `${dx.toFixed(1)}px`);
-        glitter.style.setProperty("--dy", `${dy.toFixed(1)}px`);
+    // 10) EFEITO HOVER BOTÕES
+    function adicionarAnimacaoBotoes(){document.querySelectorAll("button").forEach(b=>{b.addEventListener("mouseenter",()=>b.classList.add("btn-hover"));b.addEventListener("mouseleave",()=>b.classList.remove("btn-hover"));});}
 
-        document.body.appendChild(glitter);
-        glitter.addEventListener("animationend", () => {
-          glitter.remove();
-        });
-      }
-    }
-
-    function ativarGlitterNosBotoes() {
-      document.body.addEventListener("click", e => {
-        if (e.target.tagName.toLowerCase() === "button") {
-          spawnGlitter(e);
-        }
-      });
-    }
-
-    // 8) ANIMAÇÃO “PULSE” EM BOTÕES AO PASSAR O MOUSE
-    function adicionarAnimacaoBotoes() {
-      document.querySelectorAll("button").forEach(btn => {
-        btn.addEventListener("mouseenter", () => {
-          btn.classList.add("btn-hover");
-        });
-        btn.addEventListener("mouseleave", () => {
-          btn.classList.remove("btn-hover");
-        });
-      });
-    }
-
-    // 9) PATINHA APARECE AO CLICAR EM QUALQUER LUGAR (EXCETO BOTÕES)
-    function spawnClickPaw(event) {
-      if (event.target.tagName.toLowerCase() === "button") return;
-
-      const x = event.clientX;
-      const y = event.clientY;
-      const span = document.createElement("span");
-      span.classList.add("click-paw");
-      span.textContent = "🐾";
-      span.style.left = `${x - 12}px`;
-      span.style.top = `${y - 12}px`;
-      document.body.appendChild(span);
-      span.addEventListener("animationend", () => {
-        span.remove();
-      });
-    }
+    // PONTO DE ENTRADA
+    document.addEventListener("DOMContentLoaded",controlarIntro);
   </script>
 </body>
 </html>
+

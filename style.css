@@ -554,3 +554,69 @@ footer {
     padding: 10px 0;
   }
 }
+
+#filtros {
+  margin: 1rem 0;
+  text-align: center;
+}
+.btn-filter {
+  background: transparent;
+  border: 2px solid #666;
+  border-radius: 4px;
+  padding: 0.5em 1em;
+  margin: 0 0.25em;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-filter.active {
+  background: #666;
+  color: #fff;
+  border-color: #444;
+}
+
+/* Estilo fofinho para os botões de filtro */
+#filtros {
+  margin: 1.5rem 0;
+  text-align: center;
+}
+
+.btn-filter {
+  display: inline-block;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: #333;
+  background: #fff;                      /* fundo branco */
+  border: 2px solid #f8cdd0;             /* rosa clarinho */
+  border-radius: 999px;                  /* deixa completamente arredondado */
+  padding: 0.6em 1.2em;                  /* espaço interno maior */
+  margin: 0 0.4em;                       /* separação entre botões */
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: 
+    background 0.3s ease, 
+    color 0.3s ease, 
+    transform 0.2s ease,
+    box-shadow 0.3s ease;
+}
+
+.btn-filter:hover:not(.active) {
+  background: #fff1f3;                   /* rosa bem clarinho */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Botão selecionado ganha destaque dourado/rosa */
+.btn-filter.active {
+  background: linear-gradient(135deg, #ffd1dc, #ffb6c1);
+  border-color: #ff92a9;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(255, 182, 193, 0.4);
+}
+
+/* Pequena animação no foco (para acessibilidade) */
+.btn-filter:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 182, 193, 0.5);
+}
+
