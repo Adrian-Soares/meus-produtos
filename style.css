@@ -620,3 +620,36 @@ footer {
   box-shadow: 0 0 0 3px rgba(255, 182, 193, 0.5);
 }
 
+/* ===== Ajustes para mobile ===== */
+@media (max-width: 768px) {
+  /* Faz os botões rolarem horizontalmente, se não couberem */
+  #filtros {
+    display: flex;
+    overflow-x: auto;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    justify-content: flex-start;
+    /* opcional: remove scrollbar no WebKit */
+  }
+  #filtros::-webkit-scrollbar {
+    display: none;
+  }
+  .btn-filter {
+    flex: 0 0 auto;      /* não encolhe, não cresce */
+    white-space: nowrap;  /* evita quebra do texto */
+  }
+}
+
+@media (max-width: 480px) {
+  /* Em telas bem estreitas, empilha em coluna */
+  #filtros {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.5rem;
+  }
+  .btn-filter {
+    width: 100%;
+    margin: 0.25rem 0;
+  }
+}
+
